@@ -3,7 +3,7 @@ Modularize the mining algo check
 """
 
 import hashlib
-from quantizer import quantize_two, quantize_eight, quantize_ten
+from quantizer import quantize
 
 
 __version__ = '0.0.1'
@@ -37,26 +37,24 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
     # simplified comparison, no backwards mining
     if mining_condition in mining_hash:
         if app_log:
-            app_log.info("Difficulty requirement satisfied for block {} from {}".format (block_height_new, peer_ip))
+            app_log.info("Difficulty requirement satisfied for block {block_height_new} from {peer_ip}")
         diff_save = diff0
 
     elif Decimal(received_timestamp) > q_db_timestamp_last + Decimal(diff_drop_time):
         # uses block timestamp, don't merge with diff() for security reasons
         time_difference = q_received_timestamp - q_db_timestamp_last
-        diff_dropped = quantize_ten(diff0) - quantize_ten(time_difference / diff_drop_time)
+        diff_dropped = quantize(diff0, 10) - quantize(time_difference / diff_drop_time, 10)
         if diff_dropped < 50:
             diff_dropped = 50
 
         mining_condition = bin_convert(db_block_hash)[0:int(diff_dropped)]
         if mining_condition in mining_hash:  # simplified comparison, no backwards mining
             if app_log:
-                app_log.info ("Readjusted difficulty requirement satisfied for block {} from {}"
-                              .format(block_height_new, peer_ip))
+                app_log.info(f"Readjusted difficulty requirement satisfied for block {block_height_new} from {peer_ip}")
             diff_save = diff0
             # lie about what diff was matched not to mess up the diff algo
         else:
-            raise ValueError ("Readjusted difficulty too low for block {} from {}, should be at least {}".format(block_height_new, peer_ip, diff_dropped))
+            raise ValueError(f"Readjusted difficulty too low for block {block_height_new} from {peer_ip}, should be at least {diff_dropped}")
     else:
-        raise ValueError ("Difficulty too low for block {} from {}, should be at least {}"
-                          .format(block_height_new, peer_ip, diff0))
+        raise ValueError(f"Difficulty too low for block {block_height_new} from {peer_ip}, should be at least {diff0}")
     return diff_save
